@@ -1,6 +1,6 @@
 # sclib (Steam Controller Library)
 Originally this project was forked from  [kolrabi/steamcontroller](https://github.com/kolrabi/steamcontroller). 
-However initial implementation works a little bit weird under Windows OS. Initial API was extended and prepared to have a port to lib USB.
+However initial implementation works a little bit weird under Windows OS. Initial API was extended and prepared to have a port to [lib USB](https://libusb.info/).
 Successfully tested and compiled under Windows OS (MSVC 2015 and MinGW) and Linux Ubuntu 18 (GCC 7.3.0).
 CSharp implementation is not the purpose of this project. It is supposed to be used as a part of DEMO written in C++ or modules for different game engines.
 
