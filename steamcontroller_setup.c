@@ -1,4 +1,4 @@
-#include "steamcontroller.h"
+#include "include/sc.h"
 #include "common.h"
 
 void Debug_DumpHex(const void *pData, size_t count) {
@@ -24,10 +24,10 @@ void Debug_DumpHex(const void *pData, size_t count) {
 
 /** Set up the controller to be usable. */
 bool SteamController_Initialize(const SteamControllerDevice *pDevice) {
-  assert(pDevice);
 
-  if (!pDevice)
+  if (!pDevice) {
     return false;
+  }
 
   SteamController_HIDFeatureReport featureReport;
 
@@ -156,6 +156,15 @@ bool SCAPI SteamController_Configure(const SteamControllerDevice *pDevice, unsig
     fprintf(stderr, "SET_SETTINGS failed for controller %p\n", pDevice);
     return false;
   }
+
+  //memset(&featureReport, 0, sizeof(featureReport));
+  //featureReport.featureId = STEAMCONTROLLER_GET_ATTRIBUTES;
+
+  //if (!SteamController_HIDGetFeatureReport(pDevice, &featureReport)) {
+	 // fprintf(stderr, "Failed to get GET_ATTRIBUTES response for controller %p\n", pDevice);
+	 // return false;
+  //}
+
 
   return true;
 }

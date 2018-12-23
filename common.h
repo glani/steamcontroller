@@ -47,8 +47,11 @@ typedef struct {
 bool SteamController_HIDSetFeatureReport(const SteamControllerDevice *pDevice, SteamController_HIDFeatureReport *pReport);
 bool SteamController_HIDGetFeatureReport(const SteamControllerDevice *pDevice, SteamController_HIDFeatureReport *pReport);
 
-bool    SteamController_Initialize(const SteamControllerDevice *pDevice);
-uint8_t SteamController_ReadRaw(const SteamControllerDevice *pDevice, uint8_t *buffer, uint8_t maxLen);
+bool SteamController_Initialize(const SteamControllerDevice *pDevice);
+size_t SteamController_ReadRaw(const SteamControllerDevice *pDevice, uint8_t *buffer, size_t maxLen);
+
+uint8_t processEvent(SteamControllerEvent *pEvent, const uint8_t *eventData, size_t len);
+
 
 
 static inline uint8_t LowByte(uint16_t value)   { return value & 0xff; }

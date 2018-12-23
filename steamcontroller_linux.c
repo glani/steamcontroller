@@ -4,7 +4,7 @@
 
 #if __linux__
 
-#include "steamcontroller.h"
+#include "include/sc.h"
 #include "common.h"
 
 #include <sys/ioctl.h>
@@ -23,12 +23,45 @@
 struct SteamControllerDevice {
   int     fd;
   bool    isWireless;
+  char    *path;
 };
 
 struct SteamControllerDeviceEnum {
   struct SteamControllerDeviceEnum *next;
   char *path;
+  int deviceId;
 };
+
+
+/**
+ * Read the range of eventnts from the device.
+ *
+ * @param pController   Device to use.
+ * @param pEvent        Where to store event data.
+ *
+ * @return The total number of successfully read events
+ */
+int SCAPI SteamController_ReadEvents(const SteamControllerDevice *pDevice, SteamControllerEvent **ppEvents, int total) {
+    if (!pDevice) {
+        return 0;
+    }
+
+    if (!ppEvents) {
+        return 0;
+    }
+
+    int totalRead = 0;
+    for (int i = 0; i < total; ++i) {
+        SteamControllerEvent *pEvent = ppEvents[i];
+        uint8_t type = SteamController_ReadEvent(pDevice, pEvent);
+        if (type == 0) {
+            break;
+        }
+        ++totalRead;
+    }
+
+    return totalRead;
+}
 
 /** 
  * Send a feature report to the device. 
@@ -184,6 +217,7 @@ SteamControllerDeviceEnum *SteamController_EnumControllerDevices() {
         SteamControllerDeviceEnum *pNewEnum = malloc(sizeof(SteamControllerDeviceEnum));
         pNewEnum->next = pEnum;
         pNewEnum->path = strdup(reportDescriptorPath);
+        pNewEnum->deviceId = deviceId;
         pEnum = pNewEnum;
       }
       globfree(&globData);
@@ -235,6 +269,7 @@ SteamControllerDevice *SteamController_Open(const SteamControllerDeviceEnum *pEn
   SteamControllerDevice *pDevice = malloc(sizeof(SteamControllerDevice));
   pDevice->fd = fd;
   pDevice->isWireless = isWireless;
+  pDevice->path = strdup(pEnum->path);
 
   SteamController_Initialize(pDevice);
   return pDevice;
@@ -251,27 +286,40 @@ void SteamController_Close(SteamControllerDevice *pDevice) {
     return;
 
   close(pDevice->fd);
+  free(pDevice->path);
   free(pDevice);
 }
 
 bool SteamController_IsWirelessDongle(const SteamControllerDevice *pDevice) {
-  if (!pDevice)
+  if (!pDevice) {
     return false;
+  }
   return pDevice->isWireless;
 }
 
-uint8_t SteamController_ReadRaw(const SteamControllerDevice *pDevice, uint8_t *buffer, uint8_t maxLen) {
+size_t SteamController_ReadRaw(const SteamControllerDevice *pDevice, uint8_t *buffer, size_t maxLen) {
   if (!pDevice)
     return 0;
 
   int res = read(pDevice->fd, buffer, maxLen);
   if (res <= 0) {
-//    fprintf(stderr, "fd: %d\n", pDevice->fd);
-//    perror("ReadRaw");
     return 0;
   }
 
   return res;
+}
+
+const char* SteamController_GetId(const struct SteamControllerDevice *pDevice) {
+  return pDevice->path;
+}
+
+
+int SteamController_Init() {
+	return 0;
+}
+
+void SteamController_Exit() {
+
 }
 
 #endif

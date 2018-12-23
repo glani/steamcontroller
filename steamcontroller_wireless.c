@@ -1,4 +1,4 @@
-#include "steamcontroller.h"
+#include "include/sc.h"
 #include "common.h"
 
 /**

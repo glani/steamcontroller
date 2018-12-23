@@ -1,5 +1,6 @@
-#include "steamcontroller.h"
+#include "include/sc.h"
 #include "common.h"
+
 
 /**
  * Read the next event from the device.
@@ -7,26 +8,36 @@
  * @param pController   Device to use.
  * @param pEvent        Where to store event data.
  * 
- * @return The type of the received event. If no event was received this is 0.
+ * @return The type of the received event.
  */
 uint8_t SCAPI SteamController_ReadEvent(const SteamControllerDevice *pDevice, SteamControllerEvent *pEvent) {
-  if (!pDevice)
+  if (!pDevice) {
     return 0;
+  }
 
-  if (!pEvent)
+  if (!pEvent) {
     return 0;
+  }
 
   uint8_t   eventDataBuf[65];
-  uint16_t  len = SteamController_ReadRaw(pDevice, eventDataBuf, 65);
+  size_t len = SteamController_ReadRaw(pDevice, eventDataBuf, 65);
 
-  if (!len)
+  if (!len) {
     return 0;
+  }
 
   uint8_t *eventData = eventDataBuf;
   if (!*eventData) {
     eventData++;
     len--;
   }
+
+  uint8_t eventType = processEvent(pEvent, eventData, len);
+
+  return eventType;
+}
+
+uint8_t processEvent(SteamControllerEvent *pEvent, const uint8_t *eventData, size_t len) {
 
   /*
     Layout of each message seems to be:
@@ -40,11 +51,12 @@ uint8_t SCAPI SteamController_ReadEvent(const SteamControllerDevice *pDevice, St
                         0x04  Battery update. Sent occasionally to update battery status of controller. Needs to be enabled with STEAMCONTROLLER_CONFIG_FLAG_SEND_BATTERY_STATUS
                         0x05  ??? Seems mostly random. Needs some tinkering with settings, controller disconnects after a while.
 
-    0x0003 xx       1 byte    Unknown. Seems to always be 0x3c (the device type) for event type 1, 
-                              0x01 for event type 3 and 0x0b for event type 4. 
+    0x0003 xx       1 byte    Unknown. Seems to always be 0x3c (the device type) for event type 1,
+                              0x01 for event type 3 and 0x0b for event type 4.
 
     0x0004                    Event type specific data.
   */
+
   uint8_t eventType = eventData[0x02];
   pEvent->eventType = eventType;
   switch(eventType) {
@@ -56,15 +68,15 @@ uint8_t SCAPI SteamController_ReadEvent(const SteamControllerDevice *pDevice, St
         0x000b xx                   1 byte    Left trigger value.
         0x000c xx                   1 byte    Right trigger value.
         0x000d 00 00 00             3 bytes   Padding?
-        0x0010 xx xx yy yy          2 sshorts Left position data. If STEAMCONTROLLER_BUTTON_LFINGER is set 
-                                              this is the position of the thumb on the left touch pad. 
+        0x0010 xx xx yy yy          2 sshorts Left position data. If STEAMCONTROLLER_BUTTON_LFINGER is set
+                                              this is the position of the thumb on the left touch pad.
                                               Otherwise it is the stick position.
-        0x0014 xx xx yy yy          2 sshorts Right position data. This is the position of the thumb on the 
+        0x0014 xx xx yy yy          2 sshorts Right position data. This is the position of the thumb on the
                                               right touch pad.
-        0x0018 00 00 00 00          4 bytes   Padding?                                         
+        0x0018 00 00 00 00          4 bytes   Padding?
         0x001c xx xx yy yy zz zz    3 sshorts Acceleration along X,Y,Z axes.
         0x0022 xx xx yy yy zz zz    3 sshorts Angular velocity (gyro) along X,Y,Z axes.
-        0x0028 xx xx yy yy zz zz    3 sshorts Orientation vector. 
+        0x0028 xx xx yy yy zz zz    3 sshorts Orientation vector.
       */
       pEvent->update.timeStamp          = eventData[0x04] | (eventData[0x05] << 8) | (eventData[0x06] << 16) | (eventData[0x07] << 24);
       pEvent->update.buttons            = eventData[0x08] | (eventData[0x09] << 8) | (eventData[0x0a] << 16);
@@ -94,7 +106,7 @@ uint8_t SCAPI SteamController_ReadEvent(const SteamControllerDevice *pDevice, St
     case STEAMCONTROLLER_EVENT_BATTERY:
       /*
         0x0004 xx xx xx xx          1 ulong   Another timestamp or message counter, separate from update event.
-        0x0008 00 00 00 00          4 bytes   Padding?                                         
+        0x0008 00 00 00 00          4 bytes   Padding?
         0x000c xx xx                1 ushort  Battery voltage in millivolts (both cells).
         0x000e 64 00                1 ushort  Unknown. Seems to be stuck at 0x0064 (100 in decimal).
       */
@@ -112,7 +124,8 @@ uint8_t SCAPI SteamController_ReadEvent(const SteamControllerDevice *pDevice, St
     default:
       fprintf(stderr, "Received unknown event type %02x:\n", eventType);
       Debug_DumpHex(eventData, len);
-      return 0;
+      eventType = 0;
+      break;
   }
   return eventType;
 }
@@ -120,7 +133,7 @@ uint8_t SCAPI SteamController_ReadEvent(const SteamControllerDevice *pDevice, St
 
 /**
  * Updates the state of a controller from an event.
- * Automatically disambiguates betwee left pad coordinates and stick position.
+ * Automatically disambiguationы betweeт left pad coordinates and stick position.
  * @param pState State to update.
  * @param pEvent Event to use.
  */

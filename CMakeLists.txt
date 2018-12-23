@@ -1,53 +1,52 @@
-IF                      ( ${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR} )
-  MESSAGE               ( FATAL_ERROR "Prevented in-tree built. Please create a build directory outside of the source code and call cmake from there" )
-ENDIF                   ( )
+cmake_minimum_required(VERSION 3.1)
+project(sclib C)
 
-CMAKE_MINIMUM_REQUIRED  ( VERSION 2.6 )
-PROJECT                 ( LibSteamController C )
+set(CMAKE_C_STANDARD 99)
 
-IF                      ( CMAKE_COMPILER_IS_GNUCC )
-  SET                   ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror" )
-ELSEIF                  ( MSVC )
-  SET                   ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 /WX" )
-ENDIF                   ( )
+set(SC_LIB sclib)
 
-OPTION                  ( BUILD_STATIC_LIB       "Build static library"         FALSE )
+IF (CMAKE_COMPILER_IS_GNUCC)
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+ELSEIF (MSVC)
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4")
+ENDIF ()
 
-SET                     ( SOURCES
-                          steamcontroller_linux.c
-                          steamcontroller_win32.c
+SET(SOURCES
+        steamcontroller_feedback.c
+        steamcontroller_setup.c
+        steamcontroller_state.c
+        steamcontroller_wireless.c
+        )
 
-                          steamcontroller_feedback.c
-                          steamcontroller_setup.c
-                          steamcontroller_state.c
-                          steamcontroller_wireless.c
-                        )
+if (UNIX)
+    list(APPEND SOURCES steamcontroller_linux.c)
+ELSEIF (WIN32)
+    if (MINGW)
+        add_definitions(-D_USE_LIBUSB)
+        include_directories(
+                ${CMAKE_CURRENT_SOURCE_DIR}/../../libusb/include/libusb-1.0
+        )
+        #test purposes
+        link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../libusb/MinGW64/static/)
+        list(APPEND SOURCES steamcontroller_libusb.c)
+    ELSEIF (MSVC)
+        list(APPEND SOURCES steamcontroller_win32.c)
+    ENDIF ()
+ENDIF ()
 
-IF                      ( BUILD_STATIC_LIB )
-  ADD_LIBRARY           ( SteamController STATIC ${SOURCES} )
-ELSE                    ( )
-  ADD_LIBRARY           ( SteamController SHARED ${SOURCES} )
 
-  SET_TARGET_PROPERTIES ( SteamController  PROPERTIES
-                          VERSION     "0.1.2"
-                          SOVERSION   "0.1" )
-ENDIF                   ( )
+add_library(${SC_LIB} STATIC ${SOURCES})
+IF (WIN32)
+    if (MINGW)
+        add_definitions(-D_USE_LIBUSB)
+        TARGET_LINK_LIBRARIES(${SC_LIB} usb-1.0)
+        list(APPEND SOURCES)
+    ELSEIF (MSVC)
+        TARGET_LINK_LIBRARIES(${SC_LIB} setupapi hid)
+    ENDIF ()
+ENDIF ()
 
-ADD_DEFINITIONS         ( -DSTEAMCONTROLLER_BUILDING_LIBRARY ) 
 
-IF                      ( WIN32 )
-  TARGET_LINK_LIBRARIES ( SteamController setupapi hid )
-ENDIF                   ( )
+ADD_EXECUTABLE          ( SteamControllerExample sclibexample.c)
+TARGET_LINK_LIBRARIES   ( SteamControllerExample ${SC_LIB} )
 
-ADD_EXECUTABLE          ( SteamControllerExample example.c )
-TARGET_LINK_LIBRARIES   ( SteamControllerExample SteamController )
-
-INSTALL                 ( TARGETS SteamController
-                          RUNTIME DESTINATION bin
-                          LIBRARY DESTINATION lib
-                          ARCHIVE DESTINATION lib
-                        )
-
-INSTALL                 ( FILES       steamcontroller.h
-                          DESTINATION include
-                        )
